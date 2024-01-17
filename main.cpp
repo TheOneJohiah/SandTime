@@ -81,7 +81,7 @@ void simulateFallingSand() {
     }
 }
 
-int main() {
+int main(int argv, char** args) {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::cerr << "Failed to initialize SDL" << std::endl;
         return -1;
