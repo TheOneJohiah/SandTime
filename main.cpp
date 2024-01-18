@@ -9,16 +9,19 @@ const int height = 300;
 const int pixelSize = 3; // Adjust the size of each pixel
 bool leftMousePressed = false;
 bool rightMousePressed = false;
-// Constants for controlling sand amount
-const int minSandAmount = 1;
-const int maxSandAmount = 15;
-int sandAmount = 1; // Initial sand amount
+// Constants for controlling draw amount
+const int minDrawAmount = 1;
+const int maxDrawAmount = 15;
+int drawAmount = 1; // Initial draw amount
 int gridX;
 int gridY;
+int selectedMat = 2;
 
 enum PixelType {
     EMPTY,
-    SAND
+    SAND,
+    WATER,
+    STONE
 };
 
 std::vector<std::vector<PixelType>> grid(height, std::vector<PixelType>(width, EMPTY));
@@ -28,11 +31,24 @@ void handleInput(SDL_Event& event) {
         leftMousePressed = (event.button.button == SDL_BUTTON_LEFT && event.button.state == SDL_PRESSED);
         rightMousePressed = (event.button.button == SDL_BUTTON_RIGHT && event.button.state == SDL_PRESSED);
     } else if (event.type == SDL_MOUSEWHEEL) {
-        // Handle mouse wheel scrolling to adjust sand amount
-        if (event.wheel.y > 0 && sandAmount < maxSandAmount) {
-            sandAmount += 2;
-        } else if (event.wheel.y < 0 && sandAmount > minSandAmount) {
-            sandAmount -= 2;
+        // Handle mouse wheel scrolling to adjust draw amount
+        if (event.wheel.y > 0 && drawAmount < maxDrawAmount) {
+            drawAmount += 2;
+        } else if (event.wheel.y < 0 && drawAmount > minDrawAmount) {
+            drawAmount -= 2;
+        }
+    }
+    else if (event.type == SDL_KEYDOWN) {
+        switch (event.key.keysym.sym) {
+        case SDLK_1:
+            selectedMat = 1;
+            break;
+        case SDLK_2:
+            selectedMat = 2;
+            break;
+        case SDLK_3:
+            selectedMat = 3;
+            break;
         }
     }
 }
@@ -65,6 +81,12 @@ void drawGrid(SDL_Renderer* renderer) {
             case EMPTY:
                 SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
                 break;
+            case WATER:
+                SDL_SetRenderDrawColor(renderer, 10, 40, 220 + colorVariation, 200);
+                break;
+            case STONE:
+                SDL_SetRenderDrawColor(renderer, 150, 130, 180 + colorVariation, 255);
+                break;
             default:
                 // code block
                 break;
@@ -72,7 +94,7 @@ void drawGrid(SDL_Renderer* renderer) {
             SDL_RenderFillRect(renderer, &pixelRect);
         }
     }
-    SDL_Rect pixelRect = { (gridX - sandAmount / 2) * pixelSize, (gridY - sandAmount / 2) * pixelSize, sandAmount  * pixelSize, sandAmount  * pixelSize };
+    SDL_Rect pixelRect = { (gridX - drawAmount / 2) * pixelSize, (gridY - drawAmount / 2) * pixelSize, drawAmount  * pixelSize, drawAmount  * pixelSize };
     SDL_SetRenderDrawColor(renderer, 0, 60, 240, 150);
     SDL_RenderFillRect(renderer, &pixelRect);
     SDL_RenderPresent(renderer);
@@ -98,10 +120,10 @@ void optimisedFallingSand() {
     for (int j = 0; j < width; j++) {
         for (int i = height - 2; i >= 0; --i) {
             if (grid[i][j] == SAND) {
-                if (grid[i + 1][j] == EMPTY) {
+                if (grid[i + 1][j] == EMPTY || grid[i + 1][j] == WATER) {
                     for (int k = i + 1; k >=0; k++)
                     {
-                        if ((grid[k][j] == EMPTY) || k == 0)
+                        if ((grid[k][j] == EMPTY || grid[i + 1][j] == WATER) || k == 0)
                         {
                             std::swap(grid[i][j], grid[k][j]);
                             i = k;
@@ -120,13 +142,54 @@ void optimisedFallingSand() {
     }
 }
 
+//when more than 20 pixels wide of water is placed down, it will fill left first (because the loop starts on left most pixel)
+//this is done to increase performance, but can be removed if nessasary. (the abs() functions dictate this behaviour)
+void waterPhysics() {
+    for (int i = height - 2; i >= 0; --i) {
+        for (int j = 0; j < width; j++) {
+            if (grid[i][j] == WATER) {
+                // Randomly choose left or right direction
+                int direction = (std::rand() % 2 == 0) ? 1 : -1;
+
+                // Search further to the sides until an empty cell is found
+                int J = j;
+                while (J >= 0 && J < width) {
+                    if (grid[i + 1][J] == EMPTY)
+                    {
+                        std::swap(grid[i][j], grid[i + 1][J]);
+                        break;
+                    }
+                    else if (abs(j - J) > 20 && grid[i][J] == EMPTY)
+                    {
+                        std::swap(grid[i][j], grid[i][J]);
+                        break;
+                    }
+                    else if (grid[i + 1][J] != WATER || abs(j-J) > 20)
+                    {
+                        break;
+                    }
+                    J += direction;
+                }if (j > 0 && j < width - 1) {
+                    if (grid[i][j + direction] == EMPTY)
+                    {
+                        std::swap(grid[i][j], grid[i][j + direction]);
+                    }
+                }
+            
+            }
+        }
+    }
+}
+
+
+
 int main(int argv, char** args) {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::cerr << "Failed to initialize SDL" << std::endl;
         return -1;
     }
 
-    SDL_Window* window = SDL_CreateWindow("Falling Sand Simulation", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width * pixelSize, height * pixelSize, SDL_WINDOW_SHOWN);
+    SDL_Window* window = SDL_CreateWindow("Particle Simulation", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width * pixelSize, height * pixelSize, SDL_WINDOW_SHOWN);
     if (!window) {
         std::cerr << "Failed to create SDL window" << std::endl;
         SDL_Quit();
@@ -160,6 +223,9 @@ int main(int argv, char** args) {
         //simulateFallingSand();
         optimisedFallingSand();
 
+        waterPhysics();
+
+
         // Get cursor position
         int mouseX, mouseY;
         SDL_GetMouseState(&mouseX, &mouseY);
@@ -168,18 +234,18 @@ int main(int argv, char** args) {
         gridX = static_cast<int>(mouseX / pixelSize);
         gridY = static_cast<int>(mouseY / pixelSize);
 
-        // Draw or remove sand based on mouse input and sand amount
+        // Draw or remove pixles based on mouse input and draw amount
         if (leftMousePressed && gridX >= 0 && gridX < width && gridY >= 0 && gridY < height) {
-            // Place sand based on the sand amount
-            for (int i = std::max(0, gridY - sandAmount / 2); i < std::min(height, gridY + sandAmount / 2 + 1); ++i) {
-                for (int j = std::max(0, gridX - sandAmount / 2); j < std::min(width, gridX + sandAmount / 2 + 1); ++j) {
-                    grid[i][j] = SAND;
+            // Place pixles based on the draw amount
+            for (int i = std::max(0, gridY - drawAmount / 2); i < std::min(height, gridY + drawAmount / 2 + 1); ++i) {
+                for (int j = std::max(0, gridX - drawAmount / 2); j < std::min(width, gridX + drawAmount / 2 + 1); ++j) {
+                    grid[i][j] = static_cast<PixelType>(selectedMat);
                 }
             }
         } else if (rightMousePressed && gridX >= 0 && gridX < width && gridY >= 0 && gridY < height) {
-            // Place empty based on the sand amount
-            for (int i = std::max(0, gridY - sandAmount / 2); i < std::min(height, gridY + sandAmount / 2 + 1); ++i) {
-                for (int j = std::max(0, gridX - sandAmount / 2); j < std::min(width, gridX + sandAmount / 2 + 1); ++j) {
+            // Place empty based on the draw amount
+            for (int i = std::max(0, gridY - drawAmount / 2); i < std::min(height, gridY + drawAmount / 2 + 1); ++i) {
+                for (int j = std::max(0, gridX - drawAmount / 2); j < std::min(width, gridX + drawAmount / 2 + 1); ++j) {
                     grid[i][j] = EMPTY;
                 }
             }
