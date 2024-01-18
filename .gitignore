@@ -1,1 +1,8 @@
-*.out
+
+.vs/
+SDL2-2.28.5/
+x64/
+*.sln
+*.vcxproj
+*.filters
+*.user
