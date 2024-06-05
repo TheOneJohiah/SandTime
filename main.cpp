@@ -1,4 +1,4 @@
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include <iostream>
 #include <vector>
 #include <cstdlib>
@@ -74,22 +74,22 @@ void drawGrid(SDL_Renderer* renderer) {
 
             int colorVariation = std::rand() % 21 - 10;
             switch (grid[i][j]) {
-            case SAND:
-                // Slight randomization of color
-                SDL_SetRenderDrawColor(renderer, 255, 220, 180 + colorVariation, 255);
-                break;
-            case EMPTY:
-                SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
-                break;
-            case WATER:
-                SDL_SetRenderDrawColor(renderer, 10, 40, 220 + colorVariation, 200);
-                break;
-            case STONE:
-                SDL_SetRenderDrawColor(renderer, 150, 130, 180 + colorVariation, 255);
-                break;
-            default:
-                // code block
-                break;
+                case SAND:
+                    // Slight randomization of color
+                    SDL_SetRenderDrawColor(renderer, 255, 220, 180 + colorVariation, 255);
+                    break;
+                case EMPTY:
+                    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+                    break;
+                case WATER:
+                    SDL_SetRenderDrawColor(renderer, 10, 40, 220 + colorVariation, 200);
+                    break;
+                case STONE:
+                    SDL_SetRenderDrawColor(renderer, 150, 130, 180 + colorVariation, 255);
+                    break;
+                default:
+                    // code block
+                    break;
             }
             SDL_RenderFillRect(renderer, &pixelRect);
         }
@@ -234,7 +234,7 @@ int main(int argv, char** args) {
         gridX = static_cast<int>(mouseX / pixelSize);
         gridY = static_cast<int>(mouseY / pixelSize);
 
-        // Draw or remove pixles based on mouse input and draw amount
+        // Draw or remove pixels based on mouse input and draw amount
         if (leftMousePressed && gridX >= 0 && gridX < width && gridY >= 0 && gridY < height) {
             // Place pixles based on the draw amount
             for (int i = std::max(0, gridY - drawAmount / 2); i < std::min(height, gridY + drawAmount / 2 + 1); ++i) {
